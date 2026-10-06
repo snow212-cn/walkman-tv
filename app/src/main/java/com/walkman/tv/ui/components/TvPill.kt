@@ -53,7 +53,9 @@ fun TvPill(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier.let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
+        modifier = modifier
+            .tvTouchClickable(interaction, onClick, onLongClick)
+            .let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
         interactionSource = interaction,
         shape = ClickableSurfaceDefaults.shape(shape = shape),
         colors = ClickableSurfaceDefaults.colors(
