@@ -2,6 +2,8 @@ package com.walkman.tv.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -10,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,11 +45,13 @@ fun TvFocusable(
     onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier,
+        modifier = modifier.tvTouchClickable(interaction, onClick),
         shape = ClickableSurfaceDefaults.shape(shape = shape),
+        interactionSource = interaction,
         colors = ClickableSurfaceDefaults.colors(
             containerColor = container,
             focusedContainerColor = focusedContainer,
@@ -61,6 +66,20 @@ fun TvFocusable(
         content = { content() },
     )
 }
+
+/**
+ * Adds ordinary touch/mouse click handling to a TV Surface without replacing its D-pad behavior.
+ * tv-material Surface owns D-pad Enter and TV focus semantics but does not install a pointer click
+ * gesture itself, so Compose touch input needs this small companion modifier.
+ */
+internal fun Modifier.tvTouchClickable(
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
+): Modifier = clickable(
+    interactionSource = interactionSource,
+    indication = null,
+    onClick = onClick,
+)
 
 /** Album/cover artwork via Coil with a music-note placeholder. */
 @Composable

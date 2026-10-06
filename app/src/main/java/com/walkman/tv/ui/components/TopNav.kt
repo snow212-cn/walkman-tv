@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,9 +124,12 @@ private fun NavItem(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(50)
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
-        modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
+        modifier = (if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .tvTouchClickable(interaction, onClick),
+        interactionSource = interaction,
         shape = ClickableSurfaceDefaults.shape(shape = shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -165,8 +169,11 @@ private fun NavItemIconOnly(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
+        modifier = Modifier.tvTouchClickable(interaction, onClick),
+        interactionSource = interaction,
         shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -211,9 +218,11 @@ private fun NowPlayingChip(
     // Focus state still goes through tv-material Surface (clickable) — when focused we get the
     // existing green pill, but the default state is now a clean text + underline instead of
     // the heavy NavInactiveBg pill.
+    val interaction = remember { MutableInteractionSource() }
     androidx.tv.material3.Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.tvTouchClickable(interaction, onClick),
+        interactionSource = interaction,
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
