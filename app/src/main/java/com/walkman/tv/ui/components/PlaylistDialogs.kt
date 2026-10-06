@@ -1,6 +1,5 @@
 package com.walkman.tv.ui.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -226,42 +224,10 @@ fun PlaylistNameDialog(
 ) {
     var name by remember { mutableStateOf(initial) }
     var showQr by remember { mutableStateOf(false) }
-    var editingName by remember { mutableStateOf(false) }
-    val fieldFocus = remember { FocusRequester() }
-    val editFocus = remember { FocusRequester() }
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-
-    // Keep the dialog on normal TV/D-pad focus when it opens. The system IME is only shown after
-    // the user explicitly chooses to edit the name.
-    LaunchedEffect(Unit) {
-        runCatching { editFocus.requestFocus() }
-    }
-    LaunchedEffect(editingName) {
-        if (!editingName) {
-            keyboard?.hide()
-            return@LaunchedEffect
-        }
-        runCatching { fieldFocus.requestFocus() }
-        runCatching { keyboard?.show() }
-    }
-
-    BackHandler {
-        if (editingName) {
-            editingName = false
-            keyboard?.hide()
-            focusManager.clearFocus(force = true)
-        } else {
-            onDismiss()
-        }
-    }
     // QR-submitted names get pushed straight into the field.
     LaunchedEffect(Unit) {
         appContainer.events.qrPlaylistName.collect { received ->
             name = received.take(24)
-            editingName = false
-            keyboard?.hide()
-            focusManager.clearFocus(force = true)
             showQr = false
         }
     }
@@ -297,23 +263,20 @@ fun PlaylistNameDialog(
                 ),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                     onDone = {
-                        editingName = false
-                        keyboard?.hide()
-                        focusManager.clearFocus(force = true)
+                        val trimmed = name.trim()
+                        if (trimmed.isNotEmpty()) onConfirm(trimmed)
                     },
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .background(AppColors.BgDeep)
-                    .padding(horizontal = 14.dp, vertical = 14.dp)
-                    .focusRequester(fieldFocus)
-                    .focusProperties { canFocus = editingName },
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
                 decorationBox = { inner ->
                     Box {
                         if (name.isEmpty()) {
                             Text(
-                                "点击「编辑名字」后输入",
+                                "请输入歌单名（按确认键调出系统输入法）",
                                 color = AppColors.TextMuted,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
@@ -326,13 +289,6 @@ fun PlaylistNameDialog(
                 },
             )
             Spacer(Modifier.size(6.dp))
-            TvPill(
-                onClick = { editingName = true },
-                focusRequester = editFocus,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
-            ) {
-                Text(if (editingName) "编辑中..." else "编辑名字", fontSize = 12.sp)
-            }
             Text(
                 "中文输入不便？点击「手机扫码输入」用手机键盘",
                 color = AppColors.TextMuted,

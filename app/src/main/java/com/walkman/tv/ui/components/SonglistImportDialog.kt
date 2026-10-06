@@ -1,6 +1,5 @@
 package com.walkman.tv.ui.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +68,6 @@ fun SonglistImportDialog(onDismiss: () -> Unit) {
     var errorText by remember { mutableStateOf<String?>(null) }
     var showQr by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
-    var editingUrl by remember { mutableStateOf(false) }
 
     val parsedRef = remember(raw) { SonglistImporter.parse(raw) }
     val pureId = remember(raw, parsedRef) {
@@ -83,44 +78,10 @@ fun SonglistImportDialog(onDismiss: () -> Unit) {
     val canImport = !importing && doneCount == null && (
         parsedRef != null || (pureId != null && manualSource != null)
         )
-    val urlFocus = remember { FocusRequester() }
-    val urlEditFocus = remember { FocusRequester() }
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-
-    // Do not focus or open the TV IME when the dialog is first shown. This keeps D-pad focus
-    // outside the text field so Back/OK can navigate normally. The IME is opened only after the
-    // user explicitly chooses to edit the URL.
-    LaunchedEffect(Unit) {
-        runCatching { urlEditFocus.requestFocus() }
-    }
-    LaunchedEffect(editingUrl) {
-        if (!editingUrl) {
-            keyboard?.hide()
-            return@LaunchedEffect
-        }
-        runCatching { urlFocus.requestFocus() }
-        runCatching { keyboard?.show() }
-    }
-
-    // When the IME is open, Android may consume the first Back press before Compose sees it.
-    // Crucially, nothing here re-focuses the field afterwards, so the keyboard stays dismissed.
-    BackHandler(enabled = !importing) {
-        if (editingUrl) {
-            editingUrl = false
-            keyboard?.hide()
-            focusManager.clearFocus(force = true)
-        } else {
-            onDismiss()
-        }
-    }
     // QR-pushed URL replaces whatever's in the field.
     LaunchedEffect(Unit) {
         appContainer.events.qrSonglistUrl.collect { received ->
             raw = received.trim()
-            editingUrl = false
-            keyboard?.hide()
-            focusManager.clearFocus(force = true)
             showQr = false
         }
     }
@@ -161,23 +122,17 @@ fun SonglistImportDialog(onDismiss: () -> Unit) {
                 ),
                 cursorBrush = SolidColor(AppColors.AccentGreen),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    editingUrl = false
-                    keyboard?.hide()
-                    focusManager.clearFocus(force = true)
-                }),
+                keyboardActions = KeyboardActions(onDone = { /* keep open, no submit */ }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .background(AppColors.BgDeep)
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
-                    .focusRequester(urlFocus)
-                    .focusProperties { canFocus = editingUrl },
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { inner ->
                     Box {
                         if (raw.isEmpty()) {
                             Text(
-                                "点击「编辑链接」输入，或手机扫码快速填入",
+                                "粘贴链接或纯数字 ID（手机扫码更省事）",
                                 color = AppColors.TextMuted,
                                 fontSize = 14.sp,
                                 maxLines = 1,
@@ -189,13 +144,6 @@ fun SonglistImportDialog(onDismiss: () -> Unit) {
                 },
             )
             Spacer(Modifier.size(6.dp))
-            TvPill(
-                onClick = { editingUrl = true },
-                focusRequester = urlEditFocus,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
-            ) {
-                Text(if (editingUrl) "编辑中..." else "编辑链接", fontSize = 12.sp)
-            }
             when {
                 parsedRef != null -> Text(
                     "✓ 已识别：${parsedRef.source.displayName}歌单 · ${parsedRef.id}",
